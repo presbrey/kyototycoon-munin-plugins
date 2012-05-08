@@ -1,0 +1,6 @@
+Installing:
+
+mkdir -p /srv/src; cd /srv/src;
+git clone https://github.com/presbrey/kyototycoon-munin-plugins.git
+cd kyototycoon-munin-plugins;
+ln -nfs `pwd`/kyoto* /usr/share/munin/plugins/;

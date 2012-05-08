@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+#%# family=auto
+#%# capabilities=autoconf suggest
+
+if [ -z $MUNIN_LIBDIR ]; then
+    MUNIN_LIBDIR=/usr/share/munin
+fi
+
+. $MUNIN_LIBDIR/plugins/kyototycoon_plugin.sh
+
+if [ -z $kthost ]; then
+    kthost=$KTHOST
+fi
+if [ -z $ktport ]; then
+    ktport=$KTPORT
+fi
+if [ -z $ktdb ]; then
+    ktdb=$KTDB
+fi
+
+# setup graph vars
+name=$(basename $0 | cut -d_ -f1)
+type=$(basename $0 | cut -d_ -f3)
+
+# db max index
+index=$(($ktdb - 1))
+
+case $1 in
+config)
+    cat <<EOF
+graph_title ${name}: db ${type}s
+graph_category kyoto
+graph_args --base 1024
+graph_info db ${type}s
+EOF
+    if [ ! -z "$type" ]; then
+
+        for i in $(seq 0 $index); do
+            echo "db_${i}.label db ${i} ${type}"
+            echo "db_${i}.draw LINE2"
+        done
+    fi
+    exit 0
+    ;;
+
+autoconf)
+    if [ "$(pgrep ktserver)" == "" ]; then
+        echo no
+    else
+        echo yes
+    fi
+    exit 0
+    ;;
+
+suggest)
+    echo "count"
+    echo "size"
+    exit 0
+    ;;
+esac
+
+ktreport | grep -E ^db_[0-9]+ | while read line; do
+    for i in $(seq 0 $index); do
+        count=$(echo $line | sed -e "s/.*$type=\([0-9]\+\).*/\1/")
+        echo "db_${i}.value $count"
+    done
+done

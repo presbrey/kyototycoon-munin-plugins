@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#%# family=auto
+#%# capabilities=autoconf
+
+if [ -z $MUNIN_LIBDIR ]; then
+    MUNIN_LIBDIR=/usr/share/munin
+fi
+
+. $MUNIN_LIBDIR/plugins/kyototycoon_plugin.sh
+
+if [ -z $kthost ]; then
+    kthost=$KTHOST
+fi
+if [ -z $ktport ]; then
+    ktport=$KTPORT
+fi
+if [ -z $ktdb ]; then
+    ktdb=$KTDB
+fi
+
+# setup graph vars
+name=$(basename $0 | cut -d_ -f1)
+fields=("cached" "free" "rss" "peak" "size" "total")
+
+case $1 in
+config)
+    cat <<EOF
+graph_title ${name}: system memory
+graph_category kyoto
+graph_args --base 1024
+graph_info system memory info
+EOF
+
+    for field in ${fields[@]}; do
+        echo "${field}.label ${field}"
+        if [[ "$field" == "total" ]]; then
+            echo "${field}.draw LINE"
+        else
+            echo "${field}.draw AREA"
+        fi
+    done
+    exit 0
+    ;;
+
+autoconf)
+    if [ "$(pgrep ktserver)" == "" ]; then
+        echo no
+    else
+        echo yes
+    fi
+    exit 0
+    ;;
+esac
+
+ktreport | grep -E "^sys_mem_(cached|free|rss|size|peak|total)" | while read line; do
+   echo $line | sed -e "s/^sys_mem_\(.*\):\s\+\([0-9]\+\)$/\1.value \2/"
+done

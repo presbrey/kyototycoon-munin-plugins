@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+#%# family=auto
+#%# capabilities=autoconf
+
+if [ -z $MUNIN_LIBDIR ]; then
+    MUNIN_LIBDIR=/usr/share/munin
+fi
+
+. $MUNIN_LIBDIR/plugins/kyototycoon_plugin.sh
+
+if [ -z $kthost ]; then
+    kthost=$KTHOST
+fi
+if [ -z $mcport ]; then
+    mcport=$MCPORT
+fi
+if [ -z $ktdb ]; then
+    ktdb=$KTDB
+fi
+
+# setup graph vars
+name=$(basename $0 | cut -d_ -f1)
+
+case $1 in
+config)
+    cat <<EOF
+graph_title ${name}: memcache commands
+graph_category kyoto
+graph_args --base 1024
+graph_info memcache commands
+EOF
+
+    mcstats | grep -E "^STAT (set|get|del|inc|dec)" | cut -d\  -f2 | while read field; do
+        echo "${field}.label ${field}"
+        echo "${field}.draw AREA"
+        echo "${field}.type DERIVE"
+    done
+    exit 0
+    ;;
+
+autoconf)
+    if [ "$(pgrep ktserver)" == "" ]; then
+        echo no
+    else
+        echo yes
+    fi
+    exit 0
+    ;;
+esac
+
+mcstats | grep -E "^STAT (set|get|del|inc|dec)" | while read line; do
+    echo $line | sed -e "s/^STAT\s\(\S*\)\s\(.*\)$/\1.value \2/"
+done
